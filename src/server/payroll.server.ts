@@ -131,8 +131,9 @@ export function computePayslip(
  * Compute attendance totals for an employee in a payroll cycle by reading
  * the attendance_records, holidays, and leave_requests tables.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function computeAttendanceTotals(args: {
-  supabase: ReturnType<typeof createClient>;
+  supabase: any;
   organization_id: string;
   employee_id: string;
   cycle_start: string; // YYYY-MM-DD
