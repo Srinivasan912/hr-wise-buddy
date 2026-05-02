@@ -22,6 +22,7 @@ import { Route as AppLeavesRouteImport } from './routes/app.leaves'
 import { Route as AppHolidaysRouteImport } from './routes/app.holidays'
 import { Route as AppEmployeesRouteImport } from './routes/app.employees'
 import { Route as AppAttendanceRouteImport } from './routes/app.attendance'
+import { Route as AppApprovalsRouteImport } from './routes/app.approvals'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -88,12 +89,18 @@ const AppAttendanceRoute = AppAttendanceRouteImport.update({
   path: '/attendance',
   getParentRoute: () => AppRoute,
 } as any)
+const AppApprovalsRoute = AppApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/app/approvals': typeof AppApprovalsRoute
   '/app/attendance': typeof AppAttendanceRoute
   '/app/employees': typeof AppEmployeesRoute
   '/app/holidays': typeof AppHolidaysRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/app/approvals': typeof AppApprovalsRoute
   '/app/attendance': typeof AppAttendanceRoute
   '/app/employees': typeof AppEmployeesRoute
   '/app/holidays': typeof AppHolidaysRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/app/approvals': typeof AppApprovalsRoute
   '/app/attendance': typeof AppAttendanceRoute
   '/app/employees': typeof AppEmployeesRoute
   '/app/holidays': typeof AppHolidaysRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/reset-password'
+    | '/app/approvals'
     | '/app/attendance'
     | '/app/employees'
     | '/app/holidays'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/reset-password'
+    | '/app/approvals'
     | '/app/attendance'
     | '/app/employees'
     | '/app/holidays'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/reset-password'
+    | '/app/approvals'
     | '/app/attendance'
     | '/app/employees'
     | '/app/holidays'
@@ -283,10 +295,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAttendanceRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/approvals': {
+      id: '/app/approvals'
+      path: '/approvals'
+      fullPath: '/app/approvals'
+      preLoaderRoute: typeof AppApprovalsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppApprovalsRoute: typeof AppApprovalsRoute
   AppAttendanceRoute: typeof AppAttendanceRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
   AppHolidaysRoute: typeof AppHolidaysRoute
@@ -299,6 +319,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppApprovalsRoute: AppApprovalsRoute,
   AppAttendanceRoute: AppAttendanceRoute,
   AppEmployeesRoute: AppEmployeesRoute,
   AppHolidaysRoute: AppHolidaysRoute,

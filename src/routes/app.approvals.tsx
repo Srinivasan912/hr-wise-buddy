@@ -36,9 +36,12 @@ function ApprovalsPage() {
   const decideLeave = async (id: string, status: "approved" | "rejected") => {
     setBusy(id);
     try {
-      const upd: Record<string, unknown> = { status, approved_by: employee?.id ?? null, approved_at: new Date().toISOString() };
-      if (status === "rejected") upd.rejection_reason = "Rejected by manager";
-      const { error } = await supabase.from("leave_requests").update(upd).eq("id", id);
+      const { error } = await supabase.from("leave_requests").update({
+        status,
+        approved_by: employee?.id ?? null,
+        approved_at: new Date().toISOString(),
+        rejection_reason: status === "rejected" ? "Rejected by manager" : null,
+      }).eq("id", id);
       if (error) throw error;
 
       // If approved, increment used balance and (optionally) mark days as 'leave'
