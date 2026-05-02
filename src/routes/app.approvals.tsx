@@ -56,10 +56,10 @@ function ApprovalsPage() {
 
             // Mark attendance as 'leave' for each day
             const start = new Date(leaveReq.from_date), end = new Date(leaveReq.to_date);
-            const upserts: Record<string, unknown>[] = [];
+            const upserts: Array<{ organization_id: string; employee_id: string; attendance_date: string; status: "leave" }> = [];
             for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
               upserts.push({
-                organization_id: leaveReq.organization_id, employee_id: leaveReq.employee_id,
+                organization_id: leaveReq.organization_id as string, employee_id: leaveReq.employee_id as string,
                 attendance_date: d.toISOString().slice(0, 10), status: "leave",
               });
             }
@@ -76,18 +76,24 @@ function ApprovalsPage() {
     setBusy(id);
     try {
       const reg = regs.find((x) => x.id === id);
-      const upd: Record<string, unknown> = { status, approved_by: employee?.id ?? null, approved_at: new Date().toISOString() };
-      if (status === "rejected") upd.rejection_reason = "Rejected by manager";
-      const { error } = await supabase.from("attendance_regularizations").update(upd).eq("id", id);
+      const { error } = await supabase.from("attendance_regularizations").update({
+        status,
+        approved_by: employee?.id ?? null,
+        approved_at: new Date().toISOString(),
+        rejection_reason: status === "rejected" ? "Rejected by manager" : null,
+      }).eq("id", id);
       if (error) throw error;
 
       if (status === "approved" && reg) {
         const { data: full } = await supabase.from("attendance_regularizations").select("employee_id, attendance_date, requested_status, requested_check_in, requested_check_out, organization_id").eq("id", id).single();
         if (full) {
           await supabase.from("attendance_records").upsert({
-            organization_id: full.organization_id, employee_id: full.employee_id,
-            attendance_date: full.attendance_date, status: full.requested_status,
-            check_in: full.requested_check_in, check_out: full.requested_check_out,
+            organization_id: full.organization_id as string,
+            employee_id: full.employee_id as string,
+            attendance_date: full.attendance_date as string,
+            status: full.requested_status as "present" | "absent" | "late" | "half_day" | "leave" | "wfh" | "holiday" | "week_off",
+            check_in: full.requested_check_in,
+            check_out: full.requested_check_out,
           }, { onConflict: "employee_id,attendance_date" });
         }
       }
