@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import {
   LayoutDashboard, Clock, CalendarDays, Users, FileText, Settings, LogOut,
-  Sun, Moon, Menu, X, Receipt, BadgeIndianRupee, CalendarClock, Building2,
+  Sun, Moon, Menu, X, Receipt, BadgeIndianRupee, CalendarClock, Building2, ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { to: "/app/attendance",      label: "Attendance",    icon: Clock },
   { to: "/app/leaves",          label: "Leaves",        icon: CalendarDays },
   { to: "/app/payslips",        label: "Payslips",      icon: Receipt },
+  { to: "/app/approvals",       label: "Approvals",     icon: ClipboardList,   roles: ["admin","hr","manager"] },
   { to: "/app/employees",       label: "Employees",     icon: Users,           roles: ["admin","hr","manager"] },
   { to: "/app/payroll",         label: "Payroll",       icon: BadgeIndianRupee, roles: ["admin","hr"] },
   { to: "/app/holidays",        label: "Holidays",      icon: CalendarClock },
