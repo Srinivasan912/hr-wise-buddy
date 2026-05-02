@@ -13,7 +13,7 @@
  * - TDS: skipped in v1 per product decision (HR can override per-cycle later).
  */
 
-import { createClient } from "@supabase/supabase-js";
+
 
 export type ComputedComponent = { code: string; name: string; amount: number };
 
