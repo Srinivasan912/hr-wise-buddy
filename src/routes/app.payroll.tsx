@@ -133,6 +133,36 @@ function PayrollPage() {
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Failed"); } finally { setDownloading(null); }
   };
 
+  const openDeduct = (it: Item) => { setDeductEdit(it); setDeductName(""); setDeductAmt(""); };
+  const addCustomDeduction = async () => {
+    if (!deductEdit) return;
+    const amt = Number(deductAmt);
+    if (!deductName.trim() || !Number.isFinite(amt) || amt <= 0) { toast.error("Enter a name and positive amount"); return; }
+    const code = `CUSTOM_${Date.now().toString(36).toUpperCase()}`;
+    const newDeductions = [...deductEdit.deductions, { code, name: deductName.trim(), amount: amt }];
+    const newTotal = newDeductions.reduce((s, d) => s + Number(d.amount), 0);
+    const newNet = Number(deductEdit.gross) - newTotal;
+    const { error } = await supabase.from("payroll_run_items").update({
+      deductions: newDeductions, total_deductions: newTotal, net_pay: newNet,
+    }).eq("id", deductEdit.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Deduction added");
+    setItems((arr) => arr.map((x) => x.id === deductEdit.id ? { ...x, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet } : x));
+    setDeductEdit({ ...deductEdit, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet });
+    setDeductName(""); setDeductAmt("");
+  };
+  const removeDeduction = async (it: Item, code: string) => {
+    const newDeductions = it.deductions.filter((d) => d.code !== code);
+    const newTotal = newDeductions.reduce((s, d) => s + Number(d.amount), 0);
+    const newNet = Number(it.gross) - newTotal;
+    const { error } = await supabase.from("payroll_run_items").update({
+      deductions: newDeductions, total_deductions: newTotal, net_pay: newNet,
+    }).eq("id", it.id);
+    if (error) { toast.error(error.message); return; }
+    setItems((arr) => arr.map((x) => x.id === it.id ? { ...x, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet } : x));
+    if (deductEdit?.id === it.id) setDeductEdit({ ...it, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet });
+  };
+
   if (!isHR) return <div className="p-8 text-sm text-muted-foreground">Admin/HR only.</div>;
 
   return (
