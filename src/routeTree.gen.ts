@@ -23,6 +23,7 @@ import { Route as AppHolidaysRouteImport } from './routes/app.holidays'
 import { Route as AppEmployeesRouteImport } from './routes/app.employees'
 import { Route as AppAttendanceRouteImport } from './routes/app.attendance'
 import { Route as AppApprovalsRouteImport } from './routes/app.approvals'
+import { Route as ApiPublicHooksDispatchPayslipEmailsRouteImport } from './routes/api/public/hooks/dispatch-payslip-emails'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -94,6 +95,12 @@ const AppApprovalsRoute = AppApprovalsRouteImport.update({
   path: '/approvals',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiPublicHooksDispatchPayslipEmailsRoute =
+  ApiPublicHooksDispatchPayslipEmailsRouteImport.update({
+    id: '/api/public/hooks/dispatch-payslip-emails',
+    path: '/api/public/hooks/dispatch-payslip-emails',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/app/payslips': typeof AppPayslipsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
+  '/api/public/hooks/dispatch-payslip-emails': typeof ApiPublicHooksDispatchPayslipEmailsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +134,7 @@ export interface FileRoutesByTo {
   '/app/payslips': typeof AppPayslipsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
+  '/api/public/hooks/dispatch-payslip-emails': typeof ApiPublicHooksDispatchPayslipEmailsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +152,7 @@ export interface FileRoutesById {
   '/app/payslips': typeof AppPayslipsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
+  '/api/public/hooks/dispatch-payslip-emails': typeof ApiPublicHooksDispatchPayslipEmailsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/app/payslips'
     | '/app/reports'
     | '/app/settings'
+    | '/api/public/hooks/dispatch-payslip-emails'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/app/payslips'
     | '/app/reports'
     | '/app/settings'
+    | '/api/public/hooks/dispatch-payslip-emails'
   id:
     | '__root__'
     | '/'
@@ -193,6 +205,7 @@ export interface FileRouteTypes {
     | '/app/payslips'
     | '/app/reports'
     | '/app/settings'
+    | '/api/public/hooks/dispatch-payslip-emails'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -200,6 +213,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicHooksDispatchPayslipEmailsRoute: typeof ApiPublicHooksDispatchPayslipEmailsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -302,6 +316,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppApprovalsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/public/hooks/dispatch-payslip-emails': {
+      id: '/api/public/hooks/dispatch-payslip-emails'
+      path: '/api/public/hooks/dispatch-payslip-emails'
+      fullPath: '/api/public/hooks/dispatch-payslip-emails'
+      preLoaderRoute: typeof ApiPublicHooksDispatchPayslipEmailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -338,7 +359,18 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicHooksDispatchPayslipEmailsRoute:
+    ApiPublicHooksDispatchPayslipEmailsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
