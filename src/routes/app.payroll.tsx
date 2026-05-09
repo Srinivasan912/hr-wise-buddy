@@ -297,6 +297,43 @@ function PayrollPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!deductEdit} onOpenChange={(o) => !o && setDeductEdit(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Custom deductions — {deductEdit?.employees?.full_name}</DialogTitle></DialogHeader>
+          {deductEdit && (
+            <div className="space-y-4">
+              <div className="text-xs text-muted-foreground">Add ad-hoc deductions like advances, fines, or asset recovery. Statutory rows (PF, ESI, PT, LOP) cannot be removed here — adjust CTC or attendance instead.</div>
+              <div className="border border-border rounded-lg divide-y divide-border max-h-56 overflow-y-auto">
+                {deductEdit.deductions.map((d) => {
+                  const isCustom = d.code.startsWith("CUSTOM_");
+                  return (
+                    <div key={d.code} className="flex items-center justify-between p-2.5 text-sm">
+                      <div><div className="font-medium">{d.name}</div><div className="text-xs text-muted-foreground">{d.code}</div></div>
+                      <div className="flex items-center gap-2">
+                        <span className="tabular-nums">{inrPrecise(d.amount)}</span>
+                        {isCustom && <Button size="sm" variant="ghost" onClick={() => removeDeduction(deductEdit, d.code)}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-3 gap-2 items-end">
+                <div className="col-span-2 space-y-1.5"><Label className="text-xs">Description</Label><Input value={deductName} onChange={(e) => setDeductName(e.target.value)} placeholder="e.g. Salary advance recovery" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Amount (₹)</Label><Input type="number" min={0} step="1" value={deductAmt} onChange={(e) => setDeductAmt(e.target.value)} /></div>
+              </div>
+              <div className="flex items-center justify-between bg-accent rounded-lg p-3">
+                <div className="text-sm">Net after deductions</div>
+                <div className="font-bold tabular-nums">{inrPrecise(deductEdit.net_pay)}</div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeductEdit(null)}>Close</Button>
+            <Button onClick={addCustomDeduction}>Add deduction</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
