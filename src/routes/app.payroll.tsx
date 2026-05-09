@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { fmtDate, inrPrecise } from "@/lib/format";
-import { BadgeIndianRupee, Play, Lock, Unlock, Plus, Eye, Download, Loader2 } from "lucide-react";
+import { BadgeIndianRupee, Play, Lock, Unlock, Plus, Eye, Download, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { runPayroll, lockPayroll, createNextCycle } from "@/server/payroll.functions";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { pdf } from "@react-pdf/renderer";
 import { PayslipDocument, type PayslipData } from "@/components/PayslipDocument";
 
