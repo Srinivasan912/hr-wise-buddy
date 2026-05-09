@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Settings, Building2, Clock, CalendarDays, BadgeIndianRupee, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +26,14 @@ function SettingsPage() {
   const [lts, setLts] = useState<LT[]>([]);
   const [hols, setHols] = useState<Hol[]>([]);
   const [savingOrg, setSavingOrg] = useState(false);
+
+  // Holiday dialog
+  const [holDlg, setHolDlg] = useState(false);
+  const [holForm, setHolForm] = useState<{ name: string; holiday_date: string; is_optional: boolean }>({ name: "", holiday_date: "", is_optional: false });
+
+  // Leave type dialog
+  const [ltDlg, setLtDlg] = useState(false);
+  const [ltForm, setLtForm] = useState<{ code: string; name: string; yearly_quota: number; monthly_accrual: number; is_paid: boolean }>({ code: "", name: "", yearly_quota: 12, monthly_accrual: 1, is_paid: true });
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -59,12 +69,34 @@ function SettingsPage() {
     const { error } = await supabase.from("leave_types").update(patch).eq("id", l.id);
     if (error) toast.error(error.message); else toast.success("Leave type saved");
   };
+  const delLT = async (id: string) => {
+    if (!confirm("Delete this leave type? Existing balances/requests referencing it will break.")) return;
+    const { error } = await supabase.from("leave_types").delete().eq("id", id);
+    if (error) toast.error(error.message); else { toast.success("Deleted"); await load(); }
+  };
+  const addLT = async () => {
+    if (!orgId) return;
+    if (!ltForm.code.trim() || !ltForm.name.trim()) { toast.error("Code and name required"); return; }
+    const { error } = await supabase.from("leave_types").insert({
+      organization_id: orgId,
+      code: ltForm.code.trim().toUpperCase(),
+      name: ltForm.name.trim(),
+      yearly_quota: ltForm.yearly_quota,
+      monthly_accrual: ltForm.monthly_accrual,
+      is_paid: ltForm.is_paid,
+    });
+    if (error) toast.error(error.message);
+    else { toast.success("Leave type added"); setLtDlg(false); setLtForm({ code: "", name: "", yearly_quota: 12, monthly_accrual: 1, is_paid: true }); await load(); }
+  };
+
   const addHoliday = async () => {
     if (!orgId) return;
-    const date = prompt("Holiday date (YYYY-MM-DD)"); if (!date) return;
-    const name = prompt("Holiday name"); if (!name) return;
-    const { error } = await supabase.from("holidays").insert({ organization_id: orgId, name, holiday_date: date });
-    if (error) toast.error(error.message); else { toast.success("Holiday added"); await load(); }
+    if (!holForm.name.trim() || !holForm.holiday_date) { toast.error("Name and date required"); return; }
+    const { error } = await supabase.from("holidays").insert({
+      organization_id: orgId, name: holForm.name.trim(), holiday_date: holForm.holiday_date, is_optional: holForm.is_optional,
+    });
+    if (error) toast.error(error.message);
+    else { toast.success("Holiday added"); setHolDlg(false); setHolForm({ name: "", holiday_date: "", is_optional: false }); await load(); }
   };
   const delHoliday = async (id: string) => {
     if (!confirm("Delete holiday?")) return;
@@ -121,26 +153,34 @@ function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="leaves" className="mt-4 space-y-3">
+          <div className="flex justify-end"><Button size="sm" onClick={() => setLtDlg(true)}><Plus className="h-3.5 w-3.5 mr-1.5" /> Add leave type</Button></div>
           {lts.map((l) => (
             <Card key={l.id}><CardContent className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Field label="Code"><Input value={l.code} onChange={(e) => setLts((arr) => arr.map((x) => x.id === l.id ? { ...x, code: e.target.value } : x))} /></Field>
               <Field label="Name"><Input value={l.name} onChange={(e) => setLts((arr) => arr.map((x) => x.id === l.id ? { ...x, name: e.target.value } : x))} /></Field>
               <Field label="Yearly quota"><Input type="number" step="0.5" value={l.yearly_quota} onChange={(e) => setLts((arr) => arr.map((x) => x.id === l.id ? { ...x, yearly_quota: Number(e.target.value) } : x))} /></Field>
               <Field label="Monthly accrual"><Input type="number" step="0.5" value={l.monthly_accrual} onChange={(e) => setLts((arr) => arr.map((x) => x.id === l.id ? { ...x, monthly_accrual: Number(e.target.value) } : x))} /></Field>
-              <div className="col-span-full"><Button size="sm" onClick={() => updLT(l)}>Save</Button></div>
+              <div className="col-span-full flex gap-2">
+                <Button size="sm" onClick={() => updLT(l)}>Save</Button>
+                <Button size="sm" variant="ghost" onClick={() => delLT(l.id)}><Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete</Button>
+              </div>
             </CardContent></Card>
           ))}
+          {lts.length === 0 && <p className="text-sm text-muted-foreground">No leave types yet.</p>}
         </TabsContent>
 
         <TabsContent value="holidays" className="mt-4">
           <Card><CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base">Holidays</CardTitle>
-            <Button size="sm" onClick={addHoliday}><Plus className="h-3.5 w-3.5 mr-1.5" /> Add</Button>
+            <Button size="sm" onClick={() => setHolDlg(true)}><Plus className="h-3.5 w-3.5 mr-1.5" /> Add</Button>
           </CardHeader>
             <CardContent className="p-0 divide-y divide-border max-h-[500px] overflow-y-auto">
               {hols.map((h) => (
                 <div key={h.id} className="p-3 flex items-center justify-between">
-                  <div><div className="font-medium text-sm">{h.name}</div><div className="text-xs text-muted-foreground">{h.holiday_date}</div></div>
+                  <div>
+                    <div className="font-medium text-sm">{h.name} {h.is_optional && <span className="text-xs text-muted-foreground ml-1">(optional)</span>}</div>
+                    <div className="text-xs text-muted-foreground">{h.holiday_date}</div>
+                  </div>
                   <Button size="sm" variant="ghost" onClick={() => delHoliday(h.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
               ))}
@@ -165,13 +205,54 @@ function SettingsPage() {
                   <li>Professional Tax: ₹200 if monthly CTC ≥ ₹15,000 (Karnataka default)</li>
                   <li>LOP: pro-rated on (working_days − present − paid_leave) / working_days</li>
                   <li>Overtime: 1.5× basic-hourly rate (per attendance OT minutes)</li>
-                  <li>TDS: not auto-calculated in v1 — HR can enter per cycle</li>
+                  <li>Per-employee CTC (used by payroll engine) is editable on the Employees page.</li>
+                  <li>Custom one-off deductions can be added per payslip from the Payroll page.</li>
                 </ul>
               </div>
             </CardContent></Card>
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Add holiday dialog */}
+      <Dialog open={holDlg} onOpenChange={setHolDlg}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Add holiday</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Field label="Name"><Input value={holForm.name} onChange={(e) => setHolForm({ ...holForm, name: e.target.value })} placeholder="e.g. Diwali" /></Field>
+            <Field label="Date"><Input type="date" value={holForm.holiday_date} onChange={(e) => setHolForm({ ...holForm, holiday_date: e.target.value })} /></Field>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={holForm.is_optional} onCheckedChange={(v) => setHolForm({ ...holForm, is_optional: !!v })} />
+              Optional / restricted holiday
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setHolDlg(false)}>Cancel</Button>
+            <Button onClick={addHoliday}>Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add leave type dialog */}
+      <Dialog open={ltDlg} onOpenChange={setLtDlg}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Add leave type</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Code"><Input value={ltForm.code} onChange={(e) => setLtForm({ ...ltForm, code: e.target.value })} placeholder="CL" /></Field>
+            <Field label="Name"><Input value={ltForm.name} onChange={(e) => setLtForm({ ...ltForm, name: e.target.value })} placeholder="Casual Leave" /></Field>
+            <Field label="Yearly quota"><Input type="number" step="0.5" value={ltForm.yearly_quota} onChange={(e) => setLtForm({ ...ltForm, yearly_quota: Number(e.target.value) })} /></Field>
+            <Field label="Monthly accrual"><Input type="number" step="0.5" value={ltForm.monthly_accrual} onChange={(e) => setLtForm({ ...ltForm, monthly_accrual: Number(e.target.value) })} /></Field>
+            <label className="col-span-2 flex items-center gap-2 text-sm">
+              <Checkbox checked={ltForm.is_paid} onCheckedChange={(v) => setLtForm({ ...ltForm, is_paid: !!v })} />
+              Paid leave
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setLtDlg(false)}>Cancel</Button>
+            <Button onClick={addLT}>Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { fmtDate, inrPrecise } from "@/lib/format";
-import { BadgeIndianRupee, Play, Lock, Unlock, Plus, Eye, Download, Loader2 } from "lucide-react";
+import { BadgeIndianRupee, Play, Lock, Unlock, Plus, Eye, Download, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { runPayroll, lockPayroll, createNextCycle } from "@/server/payroll.functions";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { pdf } from "@react-pdf/renderer";
 import { PayslipDocument, type PayslipData } from "@/components/PayslipDocument";
 
@@ -35,6 +37,9 @@ function PayrollPage() {
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Item | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [deductEdit, setDeductEdit] = useState<Item | null>(null);
+  const [deductName, setDeductName] = useState("");
+  const [deductAmt, setDeductAmt] = useState("");
 
   const runFn = useServerFn(runPayroll);
   const lockFn = useServerFn(lockPayroll);
@@ -128,6 +133,36 @@ function PayrollPage() {
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Failed"); } finally { setDownloading(null); }
   };
 
+  const openDeduct = (it: Item) => { setDeductEdit(it); setDeductName(""); setDeductAmt(""); };
+  const addCustomDeduction = async () => {
+    if (!deductEdit) return;
+    const amt = Number(deductAmt);
+    if (!deductName.trim() || !Number.isFinite(amt) || amt <= 0) { toast.error("Enter a name and positive amount"); return; }
+    const code = `CUSTOM_${Date.now().toString(36).toUpperCase()}`;
+    const newDeductions = [...deductEdit.deductions, { code, name: deductName.trim(), amount: amt }];
+    const newTotal = newDeductions.reduce((s, d) => s + Number(d.amount), 0);
+    const newNet = Number(deductEdit.gross) - newTotal;
+    const { error } = await supabase.from("payroll_run_items").update({
+      deductions: newDeductions, total_deductions: newTotal, net_pay: newNet,
+    }).eq("id", deductEdit.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Deduction added");
+    setItems((arr) => arr.map((x) => x.id === deductEdit.id ? { ...x, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet } : x));
+    setDeductEdit({ ...deductEdit, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet });
+    setDeductName(""); setDeductAmt("");
+  };
+  const removeDeduction = async (it: Item, code: string) => {
+    const newDeductions = it.deductions.filter((d) => d.code !== code);
+    const newTotal = newDeductions.reduce((s, d) => s + Number(d.amount), 0);
+    const newNet = Number(it.gross) - newTotal;
+    const { error } = await supabase.from("payroll_run_items").update({
+      deductions: newDeductions, total_deductions: newTotal, net_pay: newNet,
+    }).eq("id", it.id);
+    if (error) { toast.error(error.message); return; }
+    setItems((arr) => arr.map((x) => x.id === it.id ? { ...x, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet } : x));
+    if (deductEdit?.id === it.id) setDeductEdit({ ...it, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet });
+  };
+
   if (!isHR) return <div className="p-8 text-sm text-muted-foreground">Admin/HR only.</div>;
 
   return (
@@ -216,8 +251,9 @@ function PayrollPage() {
                           <td className="px-3 py-2 text-right tabular-nums">{inrPrecise(it.total_deductions)}</td>
                           <td className="px-3 py-2 text-right tabular-nums font-semibold">{inrPrecise(it.net_pay)}</td>
                           <td className="px-3 py-2 text-right whitespace-nowrap">
-                            <Button size="sm" variant="ghost" onClick={() => setPreview(it)}><Eye className="h-3.5 w-3.5" /></Button>
-                            <Button size="sm" variant="ghost" disabled={downloading === it.id} onClick={() => downloadPdf(it)}>
+                            <Button size="sm" variant="ghost" onClick={() => setPreview(it)} title="Preview"><Eye className="h-3.5 w-3.5" /></Button>
+                            <Button size="sm" variant="ghost" disabled={selected?.is_locked} onClick={() => openDeduct(it)} title="Edit deductions"><Pencil className="h-3.5 w-3.5" /></Button>
+                            <Button size="sm" variant="ghost" disabled={downloading === it.id} onClick={() => downloadPdf(it)} title="Download PDF">
                               {downloading === it.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                             </Button>
                           </td>
@@ -259,6 +295,43 @@ function PayrollPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deductEdit} onOpenChange={(o) => !o && setDeductEdit(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Custom deductions — {deductEdit?.employees?.full_name}</DialogTitle></DialogHeader>
+          {deductEdit && (
+            <div className="space-y-4">
+              <div className="text-xs text-muted-foreground">Add ad-hoc deductions like advances, fines, or asset recovery. Statutory rows (PF, ESI, PT, LOP) cannot be removed here — adjust CTC or attendance instead.</div>
+              <div className="border border-border rounded-lg divide-y divide-border max-h-56 overflow-y-auto">
+                {deductEdit.deductions.map((d) => {
+                  const isCustom = d.code.startsWith("CUSTOM_");
+                  return (
+                    <div key={d.code} className="flex items-center justify-between p-2.5 text-sm">
+                      <div><div className="font-medium">{d.name}</div><div className="text-xs text-muted-foreground">{d.code}</div></div>
+                      <div className="flex items-center gap-2">
+                        <span className="tabular-nums">{inrPrecise(d.amount)}</span>
+                        {isCustom && <Button size="sm" variant="ghost" onClick={() => removeDeduction(deductEdit, d.code)}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-3 gap-2 items-end">
+                <div className="col-span-2 space-y-1.5"><Label className="text-xs">Description</Label><Input value={deductName} onChange={(e) => setDeductName(e.target.value)} placeholder="e.g. Salary advance recovery" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Amount (₹)</Label><Input type="number" min={0} step="1" value={deductAmt} onChange={(e) => setDeductAmt(e.target.value)} /></div>
+              </div>
+              <div className="flex items-center justify-between bg-accent rounded-lg p-3">
+                <div className="text-sm">Net after deductions</div>
+                <div className="font-bold tabular-nums">{inrPrecise(deductEdit.net_pay)}</div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeductEdit(null)}>Close</Button>
+            <Button onClick={addCustomDeduction}>Add deduction</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
