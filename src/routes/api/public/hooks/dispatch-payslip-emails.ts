@@ -48,8 +48,9 @@ export const Route = createFileRoute("/api/public/hooks/dispatch-payslip-emails"
             .select("id, organization_id, employee_id, employees(email, full_name)")
             .eq("payroll_cycle_id", run.payroll_cycle_id);
 
-          for (const ps of (payslips ?? []) as Array<{ id: string; organization_id: string; employees: { email: string; full_name: string } | null }>) {
-            const email = ps.employees?.email;
+          for (const ps of (payslips ?? []) as unknown as Array<{ id: string; organization_id: string; employees: { email: string; full_name: string } | { email: string; full_name: string }[] | null }>) {
+            const emp = Array.isArray(ps.employees) ? ps.employees[0] : ps.employees;
+            const email = emp?.email;
             if (!email) continue;
 
             // Skip if already logged for this payslip
