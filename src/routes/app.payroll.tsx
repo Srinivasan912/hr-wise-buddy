@@ -251,8 +251,9 @@ function PayrollPage() {
                           <td className="px-3 py-2 text-right tabular-nums">{inrPrecise(it.total_deductions)}</td>
                           <td className="px-3 py-2 text-right tabular-nums font-semibold">{inrPrecise(it.net_pay)}</td>
                           <td className="px-3 py-2 text-right whitespace-nowrap">
-                            <Button size="sm" variant="ghost" onClick={() => setPreview(it)}><Eye className="h-3.5 w-3.5" /></Button>
-                            <Button size="sm" variant="ghost" disabled={downloading === it.id} onClick={() => downloadPdf(it)}>
+                            <Button size="sm" variant="ghost" onClick={() => setPreview(it)} title="Preview"><Eye className="h-3.5 w-3.5" /></Button>
+                            <Button size="sm" variant="ghost" disabled={selected?.is_locked} onClick={() => openDeduct(it)} title="Edit deductions"><Pencil className="h-3.5 w-3.5" /></Button>
+                            <Button size="sm" variant="ghost" disabled={downloading === it.id} onClick={() => downloadPdf(it)} title="Download PDF">
                               {downloading === it.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                             </Button>
                           </td>
