@@ -37,6 +37,9 @@ function PayrollPage() {
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Item | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [deductEdit, setDeductEdit] = useState<Item | null>(null);
+  const [deductName, setDeductName] = useState("");
+  const [deductAmt, setDeductAmt] = useState("");
 
   const runFn = useServerFn(runPayroll);
   const lockFn = useServerFn(lockPayroll);
