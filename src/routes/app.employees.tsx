@@ -5,8 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { inr, fmtDate } from "@/lib/format";
-import { Search } from "lucide-react";
+import { Search, Pencil } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/employees")({ component: EmployeesPage });
 
@@ -16,10 +20,33 @@ function EmployeesPage() {
   const { orgId, isHR } = useAuth();
   const [list, setList] = useState<Emp[]>([]);
   const [q, setQ] = useState("");
-  useEffect(() => {
+  const [editing, setEditing] = useState<Emp | null>(null);
+  const [ctcInput, setCtcInput] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  const load = () => {
     if (!orgId) return;
-    supabase.from("employees").select("id, employee_code, full_name, email, mobile, ctc_annual, joining_date, status, departments(name), designations(name)").eq("organization_id", orgId).order("employee_code").then(({ data }) => setList((data as unknown as Emp[]) ?? []));
-  }, [orgId]);
+    supabase.from("employees")
+      .select("id, employee_code, full_name, email, mobile, ctc_annual, joining_date, status, departments(name), designations(name)")
+      .eq("organization_id", orgId).order("employee_code")
+      .then(({ data }) => setList((data as unknown as Emp[]) ?? []));
+  };
+  useEffect(load, [orgId]);
+
+  const openEdit = (e: Emp) => { setEditing(e); setCtcInput(String(e.ctc_annual)); };
+  const saveCtc = async () => {
+    if (!editing) return;
+    const val = Number(ctcInput);
+    if (!Number.isFinite(val) || val < 0) { toast.error("Enter a valid annual CTC"); return; }
+    setSaving(true);
+    const { error } = await supabase.from("employees").update({ ctc_annual: val }).eq("id", editing.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`CTC updated for ${editing.full_name}`);
+    setEditing(null);
+    load();
+  };
+
   const filtered = list.filter((e) => !q || e.full_name.toLowerCase().includes(q.toLowerCase()) || e.employee_code.toLowerCase().includes(q.toLowerCase()) || e.email.toLowerCase().includes(q.toLowerCase()));
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -39,6 +66,7 @@ function EmployeesPage() {
                 <th className="px-4 py-2 font-medium">Joined</th>
                 {isHR && <th className="px-4 py-2 font-medium text-right">CTC (annual)</th>}
                 <th className="px-4 py-2 font-medium">Status</th>
+                {isHR && <th className="px-4 py-2 font-medium text-right">Actions</th>}
               </tr></thead>
               <tbody className="divide-y divide-border">
                 {filtered.map((e) => (
@@ -50,14 +78,34 @@ function EmployeesPage() {
                     <td className="px-4 py-2.5 text-muted-foreground">{fmtDate(e.joining_date)}</td>
                     {isHR && <td className="px-4 py-2.5 text-right tabular-nums">{inr(e.ctc_annual, { compact: true })}</td>}
                     <td className="px-4 py-2.5"><Badge variant="outline" className="capitalize">{e.status.replace("_"," ")}</Badge></td>
+                    {isHR && <td className="px-4 py-2.5 text-right">
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(e)} title="Edit CTC"><Pencil className="h-3.5 w-3.5" /></Button>
+                    </td>}
                   </tr>
                 ))}
-                {filtered.length === 0 && <tr><td colSpan={isHR ? 7 : 6} className="text-center py-8 text-muted-foreground">No employees match</td></tr>}
+                {filtered.length === 0 && <tr><td colSpan={isHR ? 8 : 6} className="text-center py-8 text-muted-foreground">No employees match</td></tr>}
               </tbody>
             </table>
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit salary — {editing?.full_name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Annual CTC (₹)</Label>
+              <Input type="number" min={0} step="1000" value={ctcInput} onChange={(e) => setCtcInput(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Monthly: {inr(Number(ctcInput || 0) / 12)}. Earnings split: Basic 50%, HRA 20%, Special 30%. Statutory deductions auto-computed.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={saveCtc} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
