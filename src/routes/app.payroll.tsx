@@ -51,7 +51,7 @@ function PayrollPage() {
     if (!orgId || !user) return;
     await supabase.from("audit_logs").insert({
       organization_id: orgId, user_id: user.id,
-      entity: "payroll_run_items", entity_id: entityId, action, diff,
+      entity: "payroll_run_items", entity_id: entityId, action, diff: diff as never,
     });
   };
 
