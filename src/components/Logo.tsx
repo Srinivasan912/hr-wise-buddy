@@ -12,7 +12,7 @@ export function Logo({ size = 28, withText = true }: { size?: number; withText?:
         <path d="M10 17.5l4 4 8-9" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
         <circle cx="24" cy="9" r="2.2" fill="white" />
       </svg>
-      {withText && <span className="font-semibold tracking-tight text-foreground">Attendance<span className="text-primary">.io</span></span>}
+      {withText && <span className="font-semibold tracking-tight text-foreground">Techno<span className="text-primary">HR</span></span>}
     </div>
   );
 }
