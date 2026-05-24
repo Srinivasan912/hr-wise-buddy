@@ -64,7 +64,7 @@ function Landing() {
       </section>
 
       <footer className="border-t border-border px-4 sm:px-8 py-6 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Attendance.io · Made for India
+        © {new Date().getFullYear()} TechnoHR · Made for India
       </footer>
     </div>
   );
