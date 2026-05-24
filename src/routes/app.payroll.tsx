@@ -29,7 +29,7 @@ type Item = {
 };
 
 function PayrollPage() {
-  const { orgId, isHR, session } = useAuth();
+  const { orgId, isHR, session, user } = useAuth();
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [selected, setSelected] = useState<Cycle | null>(null);
   const [run, setRun] = useState<Run | null>(null);
@@ -40,10 +40,21 @@ function PayrollPage() {
   const [deductEdit, setDeductEdit] = useState<Item | null>(null);
   const [deductName, setDeductName] = useState("");
   const [deductAmt, setDeductAmt] = useState("");
+  const [cycleDlg, setCycleDlg] = useState(false);
+  const [cName, setCName] = useState(""); const [cStart, setCStart] = useState(""); const [cEnd, setCEnd] = useState("");
 
   const runFn = useServerFn(runPayroll);
   const lockFn = useServerFn(lockPayroll);
   const newCycleFn = useServerFn(createNextCycle);
+
+  const logAudit = async (action: string, entityId: string, diff: Record<string, unknown>) => {
+    if (!orgId || !user) return;
+    await supabase.from("audit_logs").insert({
+      organization_id: orgId, user_id: user.id,
+      entity: "payroll_run_items", entity_id: entityId, action, diff: diff as never,
+    });
+  };
+
 
   const loadCycles = useCallback(async () => {
     if (!orgId) return;
@@ -146,12 +157,14 @@ function PayrollPage() {
       deductions: newDeductions, total_deductions: newTotal, net_pay: newNet,
     }).eq("id", deductEdit.id);
     if (error) { toast.error(error.message); return; }
+    await logAudit("deduction_add", deductEdit.id, { code, name: deductName.trim(), amount: amt, employee_id: deductEdit.employee_id });
     toast.success("Deduction added");
     setItems((arr) => arr.map((x) => x.id === deductEdit.id ? { ...x, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet } : x));
     setDeductEdit({ ...deductEdit, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet });
     setDeductName(""); setDeductAmt("");
   };
   const removeDeduction = async (it: Item, code: string) => {
+    const removed = it.deductions.find((d) => d.code === code);
     const newDeductions = it.deductions.filter((d) => d.code !== code);
     const newTotal = newDeductions.reduce((s, d) => s + Number(d.amount), 0);
     const newNet = Number(it.gross) - newTotal;
@@ -159,8 +172,22 @@ function PayrollPage() {
       deductions: newDeductions, total_deductions: newTotal, net_pay: newNet,
     }).eq("id", it.id);
     if (error) { toast.error(error.message); return; }
+    await logAudit("deduction_remove", it.id, { code, name: removed?.name, amount: removed?.amount, employee_id: it.employee_id });
     setItems((arr) => arr.map((x) => x.id === it.id ? { ...x, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet } : x));
     if (deductEdit?.id === it.id) setDeductEdit({ ...it, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet });
+  };
+
+  const createCustomCycle = async () => {
+    if (!orgId) return;
+    if (!cName.trim() || !cStart || !cEnd) { toast.error("Fill all fields"); return; }
+    if (new Date(cStart) > new Date(cEnd)) { toast.error("Start must be before end"); return; }
+    const { error } = await supabase.from("payroll_cycles").insert({
+      organization_id: orgId, name: cName.trim(), cycle_start: cStart, cycle_end: cEnd, pay_date: cEnd,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Cycle created");
+    setCycleDlg(false); setCName(""); setCStart(""); setCEnd("");
+    await loadCycles();
   };
 
   if (!isHR) return <div className="p-8 text-sm text-muted-foreground">Admin/HR only.</div>;
@@ -172,7 +199,10 @@ function PayrollPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Payroll</h1>
           <p className="text-sm text-muted-foreground mt-1">Cycle: previous month {26} → current month {25} (configurable in Settings)</p>
         </div>
-        <Button variant="outline" onClick={onNewCycle} disabled={busy}><Plus className="h-4 w-4 mr-1.5" /> New cycle</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setCycleDlg(true)} disabled={busy}><Plus className="h-4 w-4 mr-1.5" /> Custom cycle</Button>
+          <Button variant="outline" onClick={onNewCycle} disabled={busy}><Plus className="h-4 w-4 mr-1.5" /> Current month</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -331,6 +361,24 @@ function PayrollPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDeductEdit(null)}>Close</Button>
             <Button onClick={addCustomDeduction}>Add deduction</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cycleDlg} onOpenChange={setCycleDlg}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>New payroll cycle</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5"><Label>Cycle name</Label><Input value={cName} onChange={(e) => setCName(e.target.value)} placeholder="e.g. June 2026 payroll" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Cycle start</Label><Input type="date" value={cStart} onChange={(e) => setCStart(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label>Cycle end</Label><Input type="date" value={cEnd} onChange={(e) => setCEnd(e.target.value)} /></div>
+            </div>
+            <p className="text-xs text-muted-foreground">Defaults follow the org payroll cycle (26th → 25th). Override here for off-cycle or arrears runs.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCycleDlg(false)}>Cancel</Button>
+            <Button onClick={createCustomCycle}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

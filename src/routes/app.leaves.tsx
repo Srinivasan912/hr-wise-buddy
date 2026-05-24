@@ -18,11 +18,14 @@ type LT = { id: string; code: string; name: string; color: string };
 type LB = { id: string; year: number; opening: number; accrued: number; used: number; balance: number; leave_types: { code: string; name: string; color: string } | null };
 type LR = { id: string; from_date: string; to_date: string; total_days: number; reason: string | null; status: string; leave_types: { name: string } | null };
 
+type TeamBal = { employee_id: string; balance: number; used: number; opening: number; accrued: number; employees: { full_name: string; employee_code: string } | null; leave_types: { code: string; name: string } | null };
+
 function LeavesPage() {
-  const { employee } = useAuth();
+  const { employee, isHR, orgId } = useAuth();
   const [types, setTypes] = useState<LT[]>([]);
   const [balances, setBalances] = useState<LB[]>([]);
   const [requests, setRequests] = useState<LR[]>([]);
+  const [teamBal, setTeamBal] = useState<TeamBal[]>([]);
   const [from, setFrom] = useState(""); const [to, setTo] = useState(""); const [typeId, setTypeId] = useState(""); const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -36,8 +39,14 @@ function LeavesPage() {
     setTypes((t.data as LT[]) ?? []);
     setBalances((b.data as unknown as LB[]) ?? []);
     setRequests((r.data as unknown as LR[]) ?? []);
+    if (isHR && orgId) {
+      const { data: tb } = await supabase.from("leave_balances")
+        .select("employee_id, balance, used, opening, accrued, employees!inner(full_name, employee_code, organization_id), leave_types(code, name)")
+        .eq("employees.organization_id", orgId);
+      setTeamBal((tb as unknown as TeamBal[]) ?? []);
+    }
   };
-  useEffect(() => { void load(); }, [employee]);
+  useEffect(() => { void load(); }, [employee, isHR, orgId]);
 
   const apply = async (e: React.FormEvent) => {
     e.preventDefault(); if (!employee) return; setBusy(true);
@@ -107,6 +116,40 @@ function LeavesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {isHR && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Team leave balances</CardTitle></CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            {teamBal.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No balances yet</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50"><tr className="text-left">
+                  <th className="px-3 py-2 font-medium">Employee</th>
+                  <th className="px-3 py-2 font-medium">Type</th>
+                  <th className="px-3 py-2 font-medium text-right">Opening</th>
+                  <th className="px-3 py-2 font-medium text-right">Accrued</th>
+                  <th className="px-3 py-2 font-medium text-right">Used</th>
+                  <th className="px-3 py-2 font-medium text-right">Balance</th>
+                </tr></thead>
+                <tbody className="divide-y divide-border">
+                  {teamBal.map((b, i) => (
+                    <tr key={i} className="hover:bg-accent/30">
+                      <td className="px-3 py-2"><div className="font-medium">{b.employees?.full_name}</div><div className="text-xs text-muted-foreground">{b.employees?.employee_code}</div></td>
+                      <td className="px-3 py-2">{b.leave_types?.name ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{Number(b.opening).toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{Number(b.accrued).toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{Number(b.used).toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold">{Number(b.balance).toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
