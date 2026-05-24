@@ -157,12 +157,14 @@ function PayrollPage() {
       deductions: newDeductions, total_deductions: newTotal, net_pay: newNet,
     }).eq("id", deductEdit.id);
     if (error) { toast.error(error.message); return; }
+    await logAudit("deduction_add", deductEdit.id, { code, name: deductName.trim(), amount: amt, employee_id: deductEdit.employee_id });
     toast.success("Deduction added");
     setItems((arr) => arr.map((x) => x.id === deductEdit.id ? { ...x, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet } : x));
     setDeductEdit({ ...deductEdit, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet });
     setDeductName(""); setDeductAmt("");
   };
   const removeDeduction = async (it: Item, code: string) => {
+    const removed = it.deductions.find((d) => d.code === code);
     const newDeductions = it.deductions.filter((d) => d.code !== code);
     const newTotal = newDeductions.reduce((s, d) => s + Number(d.amount), 0);
     const newNet = Number(it.gross) - newTotal;
@@ -170,8 +172,22 @@ function PayrollPage() {
       deductions: newDeductions, total_deductions: newTotal, net_pay: newNet,
     }).eq("id", it.id);
     if (error) { toast.error(error.message); return; }
+    await logAudit("deduction_remove", it.id, { code, name: removed?.name, amount: removed?.amount, employee_id: it.employee_id });
     setItems((arr) => arr.map((x) => x.id === it.id ? { ...x, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet } : x));
     if (deductEdit?.id === it.id) setDeductEdit({ ...it, deductions: newDeductions, total_deductions: newTotal, net_pay: newNet });
+  };
+
+  const createCustomCycle = async () => {
+    if (!orgId) return;
+    if (!cName.trim() || !cStart || !cEnd) { toast.error("Fill all fields"); return; }
+    if (new Date(cStart) > new Date(cEnd)) { toast.error("Start must be before end"); return; }
+    const { error } = await supabase.from("payroll_cycles").insert({
+      organization_id: orgId, name: cName.trim(), cycle_start: cStart, cycle_end: cEnd, pay_date: cEnd,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Cycle created");
+    setCycleDlg(false); setCName(""); setCStart(""); setCEnd("");
+    await loadCycles();
   };
 
   if (!isHR) return <div className="p-8 text-sm text-muted-foreground">Admin/HR only.</div>;
