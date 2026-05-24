@@ -18,11 +18,14 @@ type LT = { id: string; code: string; name: string; color: string };
 type LB = { id: string; year: number; opening: number; accrued: number; used: number; balance: number; leave_types: { code: string; name: string; color: string } | null };
 type LR = { id: string; from_date: string; to_date: string; total_days: number; reason: string | null; status: string; leave_types: { name: string } | null };
 
+type TeamBal = { employee_id: string; balance: number; used: number; opening: number; accrued: number; employees: { full_name: string; employee_code: string } | null; leave_types: { code: string; name: string } | null };
+
 function LeavesPage() {
-  const { employee } = useAuth();
+  const { employee, isHR, orgId } = useAuth();
   const [types, setTypes] = useState<LT[]>([]);
   const [balances, setBalances] = useState<LB[]>([]);
   const [requests, setRequests] = useState<LR[]>([]);
+  const [teamBal, setTeamBal] = useState<TeamBal[]>([]);
   const [from, setFrom] = useState(""); const [to, setTo] = useState(""); const [typeId, setTypeId] = useState(""); const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -36,8 +39,14 @@ function LeavesPage() {
     setTypes((t.data as LT[]) ?? []);
     setBalances((b.data as unknown as LB[]) ?? []);
     setRequests((r.data as unknown as LR[]) ?? []);
+    if (isHR && orgId) {
+      const { data: tb } = await supabase.from("leave_balances")
+        .select("employee_id, balance, used, opening, accrued, employees!inner(full_name, employee_code, organization_id), leave_types(code, name)")
+        .eq("employees.organization_id", orgId);
+      setTeamBal((tb as unknown as TeamBal[]) ?? []);
+    }
   };
-  useEffect(() => { void load(); }, [employee]);
+  useEffect(() => { void load(); }, [employee, isHR, orgId]);
 
   const apply = async (e: React.FormEvent) => {
     e.preventDefault(); if (!employee) return; setBusy(true);
