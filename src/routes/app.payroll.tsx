@@ -29,7 +29,7 @@ type Item = {
 };
 
 function PayrollPage() {
-  const { orgId, isHR, session } = useAuth();
+  const { orgId, isHR, session, user } = useAuth();
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [selected, setSelected] = useState<Cycle | null>(null);
   const [run, setRun] = useState<Run | null>(null);
@@ -40,10 +40,21 @@ function PayrollPage() {
   const [deductEdit, setDeductEdit] = useState<Item | null>(null);
   const [deductName, setDeductName] = useState("");
   const [deductAmt, setDeductAmt] = useState("");
+  const [cycleDlg, setCycleDlg] = useState(false);
+  const [cName, setCName] = useState(""); const [cStart, setCStart] = useState(""); const [cEnd, setCEnd] = useState("");
 
   const runFn = useServerFn(runPayroll);
   const lockFn = useServerFn(lockPayroll);
   const newCycleFn = useServerFn(createNextCycle);
+
+  const logAudit = async (action: string, entityId: string, diff: Record<string, unknown>) => {
+    if (!orgId || !user) return;
+    await supabase.from("audit_logs").insert({
+      organization_id: orgId, user_id: user.id,
+      entity: "payroll_run_items", entity_id: entityId, action, diff,
+    });
+  };
+
 
   const loadCycles = useCallback(async () => {
     if (!orgId) return;
