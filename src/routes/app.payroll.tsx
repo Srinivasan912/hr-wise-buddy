@@ -364,6 +364,24 @@ function PayrollPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={cycleDlg} onOpenChange={setCycleDlg}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>New payroll cycle</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5"><Label>Cycle name</Label><Input value={cName} onChange={(e) => setCName(e.target.value)} placeholder="e.g. June 2026 payroll" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Cycle start</Label><Input type="date" value={cStart} onChange={(e) => setCStart(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label>Cycle end</Label><Input type="date" value={cEnd} onChange={(e) => setCEnd(e.target.value)} /></div>
+            </div>
+            <p className="text-xs text-muted-foreground">Defaults follow the org payroll cycle (26th → 25th). Override here for off-cycle or arrears runs.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCycleDlg(false)}>Cancel</Button>
+            <Button onClick={createCustomCycle}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
