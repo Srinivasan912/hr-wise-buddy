@@ -199,7 +199,10 @@ function PayrollPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Payroll</h1>
           <p className="text-sm text-muted-foreground mt-1">Cycle: previous month {26} → current month {25} (configurable in Settings)</p>
         </div>
-        <Button variant="outline" onClick={onNewCycle} disabled={busy}><Plus className="h-4 w-4 mr-1.5" /> New cycle</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setCycleDlg(true)} disabled={busy}><Plus className="h-4 w-4 mr-1.5" /> Custom cycle</Button>
+          <Button variant="outline" onClick={onNewCycle} disabled={busy}><Plus className="h-4 w-4 mr-1.5" /> Current month</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
