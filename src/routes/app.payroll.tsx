@@ -9,7 +9,7 @@ import { fmtDate, inrPrecise } from "@/lib/format";
 import { BadgeIndianRupee, Play, Lock, Unlock, Plus, Eye, Download, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { runPayroll, lockPayroll, createNextCycle } from "@/server/payroll.functions";
+import { runPayroll, lockPayroll, createNextCycle } from "@/lib/payroll.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
