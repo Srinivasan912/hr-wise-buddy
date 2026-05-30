@@ -1544,6 +1544,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_role_in_org: {
+        Args: {
+          _org_id: string
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "hr" | "manager" | "employee"
