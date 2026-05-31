@@ -1,0 +1,16 @@
+[build]
+  command = "bun run build"
+  publish = ".output/public"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/*"
+  to = "/"
+  status = 200
+
+# Functions directory used by TanStack Start when target = "netlify"
+[functions]
+  directory = ".output/server"
+  node_bundler = "esbuild"
